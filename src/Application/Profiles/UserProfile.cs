@@ -1,8 +1,8 @@
 ﻿using AutoMapper;
-using api_catalogo.Data.Dtos;
-using api_catalogo.Models;
+using Domain.Entities;
+using Application.Dtos.Users;
 
-namespace api_catalogo.Profiles
+namespace Application.Profiles
 {
     public class UserProfile : Profile
     {

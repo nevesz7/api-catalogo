@@ -4,10 +4,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using api_catalogo.Data.Dtos;
-using api_catalogo.Models;
+using Microsoft.AspNetCore.Authorization;
+using Application.Dtos.Users;
+using Domain.Entities;
+using AutoMapper;
 
-namespace api_catalogo.Controllers
+namespace Api_Catalogo.Api.Controllers
 {
     [ApiController]
     [Route("users")]
@@ -15,18 +17,20 @@ namespace api_catalogo.Controllers
     {
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly IMapper _mapper;
 
         public UserController(
             UserManager<User> userManager,
-            SignInManager<User> signInManager)
+            SignInManager<User> signInManager,
+            RoleManager<IdentityRole> roleManager,
+            IMapper mapper)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _roleManager = roleManager;
+            _mapper = mapper;
         }
-
-        // =========================
-        // AUTH
-        // =========================
 
         // POST /users/auth/register
         [HttpPost("auth/register")]
@@ -35,16 +39,17 @@ namespace api_catalogo.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var user = new User
-            {
-                UserName = dto.Username,
-                BirthDate = dto.BirthDate
-            };
+            var user = _mapper.Map<User>(dto);
 
             var result = await _userManager.CreateAsync(user, dto.Password);
-
             if (!result.Succeeded)
                 return BadRequest(result.Errors);
+
+            var roleToAssign = string.IsNullOrWhiteSpace(dto.Role) ? Roles.Viewer : dto.Role;
+            if (!await _roleManager.RoleExistsAsync(roleToAssign))
+                return BadRequest(new { message = $"Role '{roleToAssign}' does not exist" });
+
+            await _userManager.AddToRoleAsync(user, roleToAssign);
 
             return Ok(new { message = "User registered successfully" });
         }
@@ -69,46 +74,42 @@ namespace api_catalogo.Controllers
             return Ok(new { message = "Login successful" });
         }
 
-        // =========================
-        // USERS CRUD
-        // =========================
-
         // GET /users
         [HttpGet]
-        public IActionResult GetAll()
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAll()
         {
-            var users = _userManager.Users
-                .Select(u => new GetUserDto
-                {
-                    Id = u.Id,
-                    UserName = u.UserName,
-                    BirthDate = u.BirthDate
-                })
-                .ToList();
+            var users = await Task.FromResult(_userManager.Users.ToList());
+            var dtos = new List<GetUserDto>();
 
-            return Ok(users);
+            foreach (var user in users)
+            {
+                var dto = _mapper.Map<GetUserDto>(user);
+                dto.Role = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? "Viewer";
+                dtos.Add(dto);
+            }
+
+            return Ok(dtos);
         }
 
         // GET /users/{id}
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetById(string id)
         {
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
                 return NotFound();
 
-            var response = new GetUserDto
-            {
-                Id = user.Id,
-                UserName = user.UserName,
-                BirthDate = user.BirthDate
-            };
+            var dto = _mapper.Map<GetUserDto>(user);
+            dto.Role = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? "Viewer";
 
-            return Ok(response);
+            return Ok(dto);
         }
 
         // PUT /users/{id}
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin,Editor")]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateUserDto dto)
         {
             var user = await _userManager.FindByIdAsync(id);
@@ -121,6 +122,17 @@ namespace api_catalogo.Controllers
             if (dto.BirthDate.HasValue)
                 user.BirthDate = dto.BirthDate.Value;
 
+            // Admin can update roles
+            if (!string.IsNullOrWhiteSpace(dto.Role))
+            {
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                await _userManager.RemoveFromRolesAsync(user, currentRoles);
+                if (!await _roleManager.RoleExistsAsync(dto.Role))
+                    return BadRequest(new { message = $"Role '{dto.Role}' does not exist" });
+
+                await _userManager.AddToRoleAsync(user, dto.Role);
+            }
+
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
                 return BadRequest(result.Errors);
@@ -130,6 +142,7 @@ namespace api_catalogo.Controllers
 
         // DELETE /users/{id}
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(string id)
         {
             var user = await _userManager.FindByIdAsync(id);

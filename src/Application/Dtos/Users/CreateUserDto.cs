@@ -1,19 +1,13 @@
 ﻿using System;
-using System.ComponentModel.DataAnnotations;
 
-namespace api_catalogo.Data.Dtos
+namespace Application.Dtos.Users
 {
     public class CreateUserDto
     {
-        [Required]
-        public string Username { get; set; }
-        [Required]
+        public string Username { get; set; } = string.Empty;
         public DateTime BirthDate { get; set; }
-        [Required]
-        [DataType(DataType.Password)]
-        public string Password { get; set; }
-        [Required]
-        [Compare("Password")]
-        public string RePassword { get; set; }
+        public string Password { get; set; } = string.Empty;
+        public string RePassword { get; set; } = string.Empty;
+        public string? Role { get; set; }
     }
 }

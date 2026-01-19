@@ -1,4 +1,8 @@
-namespace api_catalogo.Data.Dtos
+namespace Application.Dtos.Users
 {
-    public record LoginRequestDto(string Username, string Password);
+    public record LoginRequestDto
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
 }

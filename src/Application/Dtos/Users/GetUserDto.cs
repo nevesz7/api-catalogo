@@ -1,14 +1,12 @@
 using System;
-using System.ComponentModel.DataAnnotations;
 
-namespace api_catalogo.Data.Dtos
+namespace Application.Dtos.Users
 {
     public class GetUserDto
     {
-        [Required]
-        public string Id { get; set; }
-        [Required]
-        public string UserName { get; set; }
+        public string Id { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
         public DateTime BirthDate { get; set; }
+        public string Role { get; set; } = string.Empty;
     }
 }

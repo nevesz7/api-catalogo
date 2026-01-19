@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using api_catalogo.Models;
+using Domain.Entities;
 
-namespace api_catalogo.Data
+namespace Infra
 {
     public class UserDbContext : IdentityDbContext<User>
     {
@@ -10,5 +10,7 @@ namespace api_catalogo.Data
         {
             
         }
+
+        public DbSet<Game> Games { get; set; } = null!;
     }
 }

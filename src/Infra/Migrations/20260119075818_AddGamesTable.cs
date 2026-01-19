@@ -2,10 +2,10 @@
 
 #nullable disable
 
-namespace api_catalogo.Migrations
+namespace Infra.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialMigration : Migration
+    public partial class AddGamesTable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
